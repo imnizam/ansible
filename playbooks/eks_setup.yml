@@ -1,0 +1,20 @@
+---
+# Maintainer Nizam Uddin <https://github.com/imnizam>
+- name: eks
+  hosts: all
+  remote_user: ubuntu
+
+  vars:
+    ansible_local_playbooks: ['eks_setup.yml']
+    ansible_local_tags: ['live']
+    eks_tmp_dir: /mnt/var/tmp
+  roles:
+    - role: ./roles/ansible_local
+
+    - role: ./roles/basic_setup
+
+    - role: ./roles/basic_facts
+
+    - role: ./roles/eks
+
+

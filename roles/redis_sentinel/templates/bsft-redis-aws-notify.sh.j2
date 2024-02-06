@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+event=$1
+data=$2
+
+src=`echo $data | awk '{print $1}'`
+hostname=`echo $data | awk '{print $2}'`
+
+topic_arn="{{consul_data['redis_sns_topic_arn']}}"
+aws sns --region us-west-2 publish --topic-arn $topic_arn --message "{\"event\": \"${event}\",\"source\": \"${src}\", \"hostname\":\"${hostname}\"}"

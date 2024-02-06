@@ -1,0 +1,65 @@
+---
+# binary installation
+- name: scylla lib dir setup
+  file:
+    path: /var/lib/scylla
+    state: directory
+    owner: scylla
+    group: scylla
+    mode: 0755
+  become: true
+  tags: live
+  
+- name: Install dirmngr, apt-transport-https on Debian / Ubuntu
+  apt: name=dirmngr state=present allow_unauthenticated=yes force=yes
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  become: true
+
+- name: Install dirmngr, apt-transport-https on Debian / Ubuntu
+  apt: name=apt-transport-https state=present allow_unauthenticated=yes force=yes
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  become: true
+
+- apt_key: keyserver=keyserver.ubuntu.com  id=6B2BFD3660EF3F5B
+  become: true
+
+- apt_key: keyserver=keyserver.ubuntu.com  id=17723034C56D4B19
+  become: true
+
+- apt_key: keyserver=keyserver.ubuntu.com  id=5e08fbd8b5d6ec9c
+  become: true
+
+- name: Download Scylla {{ scylladb[swversion].release }} repo for Ubuntu 16.04 (Xenial)
+  get_url: url=http://repositories.scylladb.com/scylla/repo/{{scylladb[swversion].apt_repo_key}}/ubuntu/scylladb-{{scylladb[swversion].release}}-xenial.list dest=/etc/apt/sources.list.d/scylla.list
+  when: ansible_distribution == 'Ubuntu' and ansible_distribution_release == 'xenial'
+  become: true
+
+- name: Download Scylla Manager {{ scylladb[swversion].manager_release }} repo for Ubuntu 16.04 (Xenial)
+  get_url: url=http://downloads.scylladb.com/deb/ubuntu/scylladb-manager-{{scylladb[swversion].manager_release}}-xenial.list dest=/etc/apt/sources.list.d/scylla-manager.list
+  when: ansible_distribution == 'Ubuntu' and ansible_distribution_release == 'xenial'
+  become: true
+
+- name: Update apt cache on Debian / Ubuntu
+  apt: update_cache=true
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  become: true
+
+- name: Install scylla manager {{ scylladb[swversion].manager_release }} on Debian / Ubuntu
+  apt: name=scylla-manager state=present allow_unauthenticated=yes force=yes
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  become: true
+
+# configure at live
+- name: Run Scylla Manager Setup
+  shell: "echo -e 'yes\nyes' | scyllamgr_setup"
+  become: true
+  tags: live
+
+- name: start scylla-server service
+  systemd:
+    name: scylla-manager.service
+    state: restarted
+    daemon_reload: true
+    enabled: true
+  become: true
+  tags: live

@@ -1,0 +1,20 @@
+[Unit]
+Description=kafka bootup configuration
+After=cloud-init.target
+
+[Service]
+RestartSec=30
+User=root
+Group=root
+LimitNOFILE=1000000
+LimitMEMLOCK=infinity
+WorkingDirectory=/home/ubuntu/ansible
+ExecStartPre=/bin/sleep 80
+ExecStartPre=/usr/bin/ansible-playbook -i "localhost," -c local playbooks/update_ansible.yml
+ExecStart=/usr/bin/ansible-playbook -i "localhost," -c local playbooks/kafka.yml -t 'live'
+
+TimeoutSec=400
+Restart=on-failure
+
+[Install]
+WantedBy=cloud-init.target

@@ -1,0 +1,22 @@
+---
+# Maintainer Nizam Uddin <https://github.com/imnizam>
+- name: scylladb
+  hosts: all
+  user: ubuntu
+  become: true
+
+  vars:
+    ansible_local_playbooks: ['scylladb_enterprise.yml']
+    ansible_local_tags: ['live']
+    mount_locations: ['/var/lib/scylla']
+    swap_file_state: 'present'
+    swversion: 'enterprise'
+    scylla_service: 'scylladb'
+    DNS: true
+  roles:
+
+    - role: ./roles/basic_setup
+
+    - role: ./roles/basic_facts
+
+    - role: ./roles/scylla

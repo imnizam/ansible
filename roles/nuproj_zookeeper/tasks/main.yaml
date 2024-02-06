@@ -1,0 +1,26 @@
+---
+- name: install packages
+  apt:
+    name: ['default-jre']
+    state: present
+  become: true
+
+- name: setup zookeeper post boot
+  template:
+    src: zookeeper-bootup-configuration.service.j2
+    dest: /etc/systemd/system/zookeeper-bootup-configuration.service
+    mode: 0644
+  become: true
+
+- shell: systemctl daemon-reload
+  become: true
+
+- service:
+    name: zookeeper-bootup-configuration
+    enabled: yes
+  become: true
+
+- import_tasks: swap.yml
+
+- include_tasks: datadog_agent.yml
+  tags: ['live']

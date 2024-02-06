@@ -1,0 +1,147 @@
+# ======================== Elasticsearch Configuration =========================
+#
+# NOTE: Elasticsearch comes with reasonable defaults for most settings.
+#       Before you set out to tweak and tune the configuration, make sure you
+#       understand what are you trying to accomplish and the consequences.
+#
+# The primary way of configuring a node is via this file. This template lists
+# the most important settings you may want to configure for a production cluster.
+#
+# Please consult the documentation for further information on configuration options:
+# https://www.elastic.co/guide/en/elasticsearch/reference/index.html
+#
+# ---------------------------------- Cluster -----------------------------------
+#
+# Use a descriptive name for your cluster:
+#
+cluster.name: {{ consul_data.Cluster }}
+#
+# ------------------------------------ Node ------------------------------------
+#
+# Use a descriptive name for the node:
+#
+#node.name: node-1
+#
+# Add custom attributes to the node:
+#
+#node.attr.rack: r1
+#
+node.master: {% if es_role in ['master', 'node'] %}true{% else %}false{% endif %}
+
+node.data: {% if es_role in ['data', 'node'] %}true{% else %}false{% endif %}
+
+node.ingest: {% if es_role in ['ingest', 'node'] %}true{% else %}false{% endif %}
+
+# ----------------------------------- Paths ------------------------------------
+#
+# Path to directory where to store the data (separate multiple locations by comma):
+#
+path.data: {{ elasticsearch_data_path }}
+#
+# Path to log files:
+#
+path.logs: {{ elasticsearch_log_path }}
+#
+# ----------------------------------- Memory -----------------------------------
+#
+# Lock the memory on startup:
+#
+bootstrap.memory_lock: true
+#
+# Make sure that the heap size is set to about half the memory available
+# on the system and that the owner of the process is allowed to use this
+# limit.
+#
+# Elasticsearch performs poorly when the system is swapping the memory.
+#
+# ---------------------------------- Network -----------------------------------
+#
+# Set the bind address to a specific IP (IPv4 or IPv6):
+#
+network.host: 0.0.0.0
+#
+# Set a custom port for HTTP:
+#
+#http.port: 9200
+#
+# For more information, consult the network module documentation.
+#
+# --------------------------------- Discovery ----------------------------------
+#
+# Pass an initial list of hosts to perform discovery when this node is started:
+# The default list of hosts is ["127.0.0.1", "[::1]"]
+#
+#discovery.seed_hosts: ["host1", "host2"]
+#
+# Bootstrap the cluster using an initial set of master-eligible nodes:
+#
+#
+# cluster.initial_master_nodes:
+
+discovery.seed_providers: ec2
+discovery.ec2.endpoint: ec2.{{ region }}.amazonaws.com
+discovery.ec2.tag.Environment: {{ consul_data.Environment }}
+discovery.ec2.tag.Service: {{ consul_data.Service }}
+discovery.ec2.tag.Cluster: {{ consul_data.Cluster }}
+discovery.ec2.tag.Role: master,node
+# For more information, consult the discovery and cluster formation module documentation.
+#
+# ---------------------------------- Gateway -----------------------------------
+#
+# Block initial recovery after a full cluster restart until N nodes are started:
+#
+# gateway.recover_after_data_nodes: 3
+#
+# For more information, consult the gateway module documentation.
+#
+# ---------------------------------- Snapshots -----------------------------------
+
+s3.client.default.region: {{ region }}
+s3.client.default.read_timeout: 300s
+s3.client.default.max_retries: 50
+
+# repositories.s3.snapshots.bucket:
+repositories.s3.snapshots.client: default
+repositories.s3.snapshots.compress: true
+repositories.s3.snapshots.max_restore_bytes_per_sec: 16GB
+repositories.s3.snapshots.max_snapshot_bytes_per_sec: 2GB
+repositories.s3.snapshots.server_side_encryption: true
+repositories.s3.snapshots.buffer_size: 1GB
+repositories.s3.snapshots.chunk_size: 1GB
+
+# ---------------------------------- Connector Pulsar -----------------------------------
+
+# pulsar.service_http_url:
+# pulsar.service_url:
+# pulsar.threads.io:
+# pulsar.threads.listeners:
+
+# ---------------------------------- Various -----------------------------------
+#
+# Require explicit names when deleting indices:
+action.destructive_requires_name: true
+
+plugin.mandatory: {{ (official_plugins + custom_plugins) | join(',') }}
+
+cloud.node.auto_attributes: true
+cluster.routing.allocation.awareness.attributes: aws_availability_zone
+cluster.routing.allocation.awareness.force.aws_availability_zone.values: {{ aws_availability_zones | join(",") }}
+
+cluster.routing.allocation.disk.watermark.low: 60%
+cluster.routing.allocation.disk.watermark.high: 70%
+cluster.routing.allocation.disk.watermark.flood_stage: 90%
+
+cluster.max_shards_per_node: 1000
+
+indices.recovery.max_bytes_per_sec: 1gb
+
+indices.memory.index_buffer_size: 10%
+
+# ----------------------------------- Extra ------------------------------------
+{% for k, v in es_configs.items() %}
+{% if v is iterable and v is not string %}
+{{ k }}: {{ v | join(',') }}
+{% else %}
+{{ k }}: {{ v }}
+{% endif %}
+{% endfor %}

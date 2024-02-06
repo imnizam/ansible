@@ -1,0 +1,77 @@
+---
+- set_cluster_data:
+    internal_ip: "{{ansible_ec2_local_ipv4}}"
+    region: "{{ansible_ec2_placement_region}}"
+    instance_tags: "{{nuproj_instance_facts.tags}}"
+    service: "{{nuproj_service}}"
+  tags: ['live']
+  become: true
+
+- debug: var=cluster_name
+  tags: ['live']
+- debug: var=dns_cluster_ip
+  tags: ['live']
+- debug: var=certificate_authority_file
+  tags: ['live']
+- debug: var=master_endpoint
+  tags: ['live']
+
+- name: copy kubeconfig
+  template:
+    src: kubeconfig.j2
+    dest: /var/lib/kubelet/kubeconfig
+    owner: root
+    group: root
+    mode: 0755
+  vars:
+    CERTIFICATE_AUTHORITY_FILE: "{{certificate_authority_file}}"
+    MASTER_ENDPOINT: "{{master_endpoint}}"
+    CLUSTER_NAME: "{{cluster_name}}"
+  become: true
+  tags: ['live']
+
+- name: copy kubelet config
+  template:
+    src: kubeletconfig.json.j2
+    dest: /var/lib/kubelet/config.json
+    owner: root
+    group: root
+    mode: 0755
+  vars:
+    DNS_CLUSTER_IP: "{{dns_cluster_ip}}"
+    INSTANCE_TYPE: "{{ansible_ec2_instance_type}}"
+  become: true
+  tags: ['live']
+
+- name: copy kubelet service to systemd
+  template:
+    src: kubelet.service.j2
+    dest: /etc/systemd/system/kubelet.service
+    owner: root
+    group: root
+    mode: 0644
+  vars:
+    CLIENT_CA_FILE: "{{certificate_authority_file}}"
+    DNS_CLUSTER_IP: "{{dns_cluster_ip}}"
+    INTERNAL_IP: "{{ansible_ec2_local_ipv4}}"
+    REGION: "{{ansible_ec2_placement_region}}"
+    NODE_LABELS: "{{nuproj_instance_facts.tags.k8s_labels}}"
+  become: true
+  tags: ['live']
+
+- shell: systemctl daemon-reload
+  become: true
+  tags: ['live']
+
+- name: start kubelet
+  service:
+    name: kubelet
+    enabled: yes
+    state: started
+  become: true
+  tags: ['live']
+
+- name: cleanup dead containers
+  cron: name="cleanup dead containers" minute="*/30" hour="*" user="root" job="docker ps -a | awk  '/Dead|Exited/{print $NF}' | xargs docker rm -f"
+  become: true
+  tags: ['live']

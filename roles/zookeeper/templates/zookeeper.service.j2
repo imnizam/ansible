@@ -1,0 +1,15 @@
+[Unit]
+Description=zookeeper systemd service
+After=cloud-init.target
+
+[Service]
+Type=simple
+RestartSec=30
+User=root
+Group=root
+LimitNOFILE=1000000
+LimitMEMLOCK=infinity
+ExecStart=/usr/local/zookeeper/bin/zkServer.sh start-foreground
+Restart=always
+[Install]
+WantedBy=cloud-init.target

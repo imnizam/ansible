@@ -1,0 +1,5 @@
+---
+swversion: ''
+scylla_service: ''
+ansible_local_playbooks: []
+ansible_local_tags: []

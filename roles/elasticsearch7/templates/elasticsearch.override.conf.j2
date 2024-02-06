@@ -1,0 +1,6 @@
+[Service]
+Environment=AWS_S3_USE_ARN_REGION=true
+Environment=ROLLBAR_TOKEN={{consul_data.RollbarToken}}
+Environment=ES_ENV={{consul_data.Environment}}
+LimitMEMLOCK=infinity
+Restart=always

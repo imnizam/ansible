@@ -1,0 +1,53 @@
+---
+- set_fact:
+    sys_auth_alter_cmd: "\"ALTER KEYSPACE system_auth WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };\""
+  when: not consul_data.Environment in ['production'] and ansible_default_ipv4['address'] in seeds
+  tags: ['live']
+
+- set_fact:
+    sys_auth_alter_cmd: "\"ALTER KEYSPACE system_auth WITH REPLICATION = { 'class' : 'NetworkTopologyStrategy', 'us-west-2' : 3 };\""
+  when: consul_data.Environment in ['production'] and ansible_default_ipv4['address'] in seeds
+  tags: ['live']
+
+- lineinfile:
+    path: /etc/scylla/scylla.yaml
+    line: "authenticator: PasswordAuthenticator"
+  tags: live
+  become: true
+
+- name: Set sys_auth topology
+  shell: |
+    /usr/bin/cqlsh {{ ansible_default_ipv4['address'] }} -e {{sys_auth_alter_cmd}}
+  become: true
+  tags: live
+  when: ansible_default_ipv4['address'] in seeds
+
+- name: restart scylla-server service
+  systemd:
+    name: scylla-server.service
+    state: restarted
+    daemon_reload: true
+    enabled: true
+  become: true
+  tags: live
+
+- name: Sleep for 60 seconds and continue with play
+  wait_for:
+    timeout: 60
+  tags: live
+  become: true
+
+- name: nodetool repair system_auth
+  shell: |
+    /usr/bin/nodetool repair system_auth
+  become: true
+  tags: live
+
+# - name: Set password for user cassandra
+#   shell: |
+#     /usr/bin/cqlsh {{ ansible_default_ipv4['address'] }} -ucassandra -pcassandra -e "ALTER USER cassandra WITH PASSWORD {{ consul_data['Auth']['Password'] }};"
+#   become: true
+#   tags: live
+#   when: ansible_default_ipv4['address'] in seeds
+#   ignore_errors: true
+

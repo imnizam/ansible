@@ -1,0 +1,18 @@
+---
+scylladb:
+  enterprise:
+    release: 2020.1
+    version: ''
+    manager_release: 2.2
+    nic: ens3
+    disks: /dev/nvme0n1
+    apt_repo_key: 'SCYL7270-e5fc-4728-b52f-015986e5dfbd'
+    apt_pkg_name: 'scylla-enterprise'
+  opensource:
+    release: 3.3
+    version: '3.3.0-0.20200319.7ae2cdf46c7-1'
+    manager_release: 2.2
+    nic: ens3
+    disks: /dev/nvme0n1
+    apt_repo_key: 'ba178731-fbf8-4dd1-806f-8c993ecc1508'
+    apt_pkg_name: 'scylla'

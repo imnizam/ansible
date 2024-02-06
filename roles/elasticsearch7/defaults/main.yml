@@ -1,0 +1,8 @@
+---
+aws_availability_zones:
+  - us-west-2a
+  - us-west-2b
+  - us-west-2c
+plugin_s3_bucket: nuprojstaging-artifacts
+plugin_s3_path: /elasticsearch_plugins
+plugin_tmp_dir: /tmp

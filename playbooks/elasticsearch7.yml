@@ -1,0 +1,21 @@
+---
+# Maintainer Nizam Uddin <https://github.com/imnizam>
+- name: elasticsearch7
+  hosts: all
+  user: ubuntu
+  become: true
+
+  vars:
+    ansible_local_playbooks: ['elasticsearch7.yml']
+    ansible_local_tags: ['live']
+    mount_locations: ['/var/lib/elasticsearch']
+    DNS: true
+
+  roles:
+    - role: ./roles/ansible_local
+
+    - role: ./roles/basic_setup
+
+    - role: ./roles/basic_facts
+    
+    - role: ./roles/elasticsearch7

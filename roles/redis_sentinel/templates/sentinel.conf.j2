@@ -1,0 +1,8 @@
+protected-mode no
+port 26379
+
+sentinel monitor {{consul_data['master_name']}} {{master_ip}} {{consul_data['master_port']}} 2
+sentinel down-after-milliseconds {{consul_data['master_name']}} 5000
+sentinel failover-timeout {{consul_data['master_name']}} 60000
+sentinel config-epoch {{consul_data['master_name']}} 1
+sentinel notification-script {{consul_data['master_name']}} /etc/redis/nuproj-redis-aws-notify.sh

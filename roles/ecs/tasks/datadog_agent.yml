@@ -1,0 +1,37 @@
+---
+#This playbook sets up datadog agent on ubuntu machines
+- setup:
+  tags: ['live']
+
+- ec2_metadata_facts:
+  tags: ['live']
+
+- name: set dd host tags, filtering(optional) few of them
+  set_dd_host_tags:
+    filter_tags_prefix: "{{consul_data.DataDogFilterTagsPrefix}}"
+    instance_id: "{{ansible_ec2_instance_id}}"
+    region: "{{ansible_ec2_placement_region}}"
+  tags: ['live']
+
+- lineinfile:
+    path: /etc/dd-agent/datadog.conf
+    regexp: '^#?tags:.*$'
+    line: "tags: {{ datadog_host_tags | default('')}}"
+  tags: ['live']
+  become: true
+
+- lineinfile:
+    path: /etc/dd-agent/datadog.conf
+    regexp: '^#?hostname:.*\..*$'
+    line: "hostname: {{ansible_hostname}}.localdomain"
+  tags: ['live']
+  become: true
+
+- shell: systemctl daemon-reload
+  become: true
+  tags: ['live']
+
+- name: restart ddog
+  service: name=datadog-agent state=restarted
+  become: true
+  tags: ['live']

@@ -1,0 +1,27 @@
+---
+- name: setup ansible-local post boot
+  template:
+    src: ansible-local.service.j2
+    dest: /etc/systemd/system/ansible-local.service
+    mode: 0644
+  when: ansible_local_playbooks | length > 0
+  become: true
+
+- service:
+    name: ansible-local
+    enabled: yes
+  when: ansible_local_playbooks | length > 0
+  become: true
+
+- set_fact:
+    cluster_name: "{{nuproj_cluster }}"
+  tags: live
+
+- import_tasks: scylladb.yml
+  when: scylla_service == 'scylladb'
+
+- import_tasks: scylla_manager_agent.yml
+  when: scylla_service == 'scylladb'
+
+- import_tasks: scylla_manager.yml
+  when: scylla_service == 'scylladb-manager'

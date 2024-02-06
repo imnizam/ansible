@@ -1,0 +1,157 @@
+---
+- name: install python packages
+  pip:
+    name: ['docker']
+  become: true
+  
+- set_instance_lifecycle:
+    instance_tags: '{{nuproj_instance_facts.tags}}'
+  tags: ['live']
+
+- name: Create path /home/ubuntu/{{nuproj_service}}/scripts
+  file: path=/home/ubuntu/{{nuproj_service}}/scripts state=directory mode=0777 owner=ubuntu group=ubuntu recurse=yes
+  become: true
+  tags: ['live']
+
+- name: Create path /docker/var/tmp
+  file: path={{ecs_tmp_dir}} state=directory mode=1777 owner=root group=root recurse=yes
+  become: true
+  tags: ['live']
+
+- name: Copy ecs service config to systemd
+  template: src=ecs_agent.service dest=/etc/systemd/system/ecs_agent.service
+  become: true
+  tags: ['live']
+
+- name: Copy the ecs cluster de-register file
+  copy: src=ecs_cluster_deregister.sh dest=/home/ubuntu/{{nuproj_service}}/scripts/ecs_cluster_deregister.sh mode=0777
+  become: true
+  tags: ['live']
+
+- name: Copy clear_sqs_sns_file file
+  template: src=clear_sqs_sns.py dest=/home/ubuntu/{{nuproj_service}}/scripts/clear_sqs_sns.py mode=0777
+  become: true
+  when: LaunchMode == 'asg_fleet'
+  tags: ['live']
+
+# spot fleet
+
+- name: Copy the spot_termination_protection.sh
+  template: src=spot_termination_protection.sh.j2 dest=/home/ubuntu/{{nuproj_service}}/scripts/spot_termination_protection.sh mode=0777
+  become: true
+  when: LaunchMode in ['fleet', 'asg_fleet']
+  tags: ['live']
+
+- name: Copy the spot_termination_protection.service
+  copy: src=spot_termination_protection.service dest=/etc/systemd/system/spot_termination_protection.service mode=0644
+  become: true
+  when: LaunchMode in ['fleet', 'asg_fleet']
+  tags: ['live']
+
+# end spot fleet
+
+# start ASG
+- name: Copy the ecs cluster de-register file
+  template: src=lifecycle_sqs_listener.py dest=/home/ubuntu/{{nuproj_service}}/scripts/lifecycle_sqs_listener.py mode=0777
+  become: true
+  when: LaunchMode in ['asg', 'asg_fleet']
+  tags: ['live']
+
+- name: Copy the ec2_lifecycle_handler service
+  copy: src=ec2_lifecycle_handler.service dest=/etc/systemd/system/ec2_lifecycle_handler.service mode=0644
+  become: true
+  when: LaunchMode in ['asg', 'asg_fleet']
+  tags: ['live']
+
+#end ASG
+
+- shell: systemctl daemon-reload
+  become: true
+  tags: ['live']
+
+- name: Start ec2_lifecycle_handler service
+  service: name=ec2_lifecycle_handler enabled=yes state=started
+  become: true
+  when: LaunchMode in ['asg', 'asg_fleet']
+  tags: ['live']
+
+- name: Start spot_termination_protection
+  service: name=spot_termination_protection enabled=yes state=started
+  become: true
+  when: LaunchMode in ['fleet', 'asg_fleet']
+  tags: ['live']
+
+- name: Start ecs-agent
+  service: name=ecs_agent enabled=yes state=started
+  become: true
+  tags: ['live']
+
+- name: Cleanup dead containers
+  cron: name="Cleanup dead containers" minute="*/30" hour="*" user="root" job="docker ps -a | awk  '/Dead|Exited/{print $NF}' | xargs docker rm -f"
+  become: true
+  ignore_errors: true
+  tags: ['live']
+
+- sysctl:
+    name: net.netfilter.nf_conntrack_max
+    value: "{{consul_data.net.netfilter.nf_conntrack_max | default(1048576)}}"
+    state: present
+  become: true
+  tags: ['live']
+
+- sysctl:
+    name: net.ipv4.tcp_keepalive_time
+    value: "{{consul_data.net.ipv4.tcp_keepalive_time | default(240)}}"
+    state: present
+  become: true
+  tags: ['live']
+
+- sysctl:
+    name: net.ipv4.tcp_keepalive_intvl
+    value: "{{consul_data.net.ipv4.tcp_keepalive_intvl | default(30)}}"
+    state: present
+  become: true
+  tags: ['live']
+
+- sysctl:
+    name: net.ipv4.tcp_keepalive_probes
+    value: "{{consul_data.net.ipv4.tcp_keepalive_probes | default(20)}}"
+    state: present
+  become: true
+  tags: ['live']
+
+# Support for ECS task iam role START
+# see https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html
+- sysctl:
+    name: net.ipv4.conf.all.route_localnet
+    value: 1
+    state: present
+  become: true
+  tags: ['live']  
+
+- name: Setup port forwarding from 80 to 51679 for metadata (1)
+  iptables:
+    table: nat
+    chain: PREROUTING
+    protocol: tcp
+    destination: 169.254.170.2
+    destination_port: 80
+    jump: DNAT
+    to_destination: 127.0.0.1:51679
+    #to_ports: 51679
+  become: true
+  tags: ['live'] 
+
+- name: Setup port forwarding from 80 to 51679 for metadata (2)
+  iptables:
+    table: nat
+    chain: OUTPUT
+    destination: 169.254.170.2
+    protocol: tcp
+    match: tcp
+    destination_port: 80
+    jump: REDIRECT
+    to_ports: 51679
+  become: true
+  tags: ['live']
+# Support for ECS task iam role END

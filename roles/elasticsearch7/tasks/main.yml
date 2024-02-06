@@ -1,0 +1,190 @@
+---
+- name: Add elasticsearch apt key
+  apt_key:
+    url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    state: present
+  become: true
+
+- name: Add repository for elasticsearch 7
+  apt_repository:
+    repo: deb https://artifacts.elastic.co/packages/7.x/apt stable main
+    state: present
+  become: true
+
+- name: Update apt cache
+  apt:
+    update_cache: true
+  become: true
+
+- name: Install elasticsearch 7
+  apt:
+    name: elasticsearch={{ elasticsearch_version }}
+    state: present
+  become: true
+
+- name: Prevent elasticsearch from being upgraded
+  shell: apt-mark hold elasticsearch
+  become: true
+
+- name: Inspect downloaded custom plugins
+  shell: ls {{ plugin_tmp_dir }}
+  register: downloaded_plugins
+  become: true
+
+- name: Download custom plugins
+  aws_s3:
+    bucket: "{{ plugin_s3_bucket }}"
+    object: "{{ plugin_s3_path }}/{{ item }}-{{ elasticsearch_version }}.zip"
+    dest: "{{ plugin_tmp_dir }}/{{ item }}-{{ elasticsearch_version }}.zip"
+    mode: get
+  when: item not in downloaded_plugins.stdout
+  with_items: "{{ custom_plugins }}"
+  become: true
+
+- name: Inspect installed plugins
+  shell: /usr/share/elasticsearch/bin/elasticsearch-plugin list
+  register: installed_plugins
+  become: true
+
+- name: Install elasticsearch plugins
+  shell: |
+     yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install {{ item }}
+  when: item not in installed_plugins.stdout_lines
+  with_items: "{{ official_plugins }}"
+  become: true
+
+- name: Install custom plugins
+  shell: |
+    yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install file://{{ plugin_tmp_dir }}/{{ item }}-{{ elasticsearch_version }}.zip
+  when: item not in installed_plugins.stdout_lines
+  with_items: "{{ custom_plugins }}"
+  become: true
+
+- set_role:
+    region: "{{region}}"
+    ec2_data: "{{nuproj_instance_facts}}"
+  when: role == ''
+  become: true
+  tags: live
+
+- set_fact:
+    es_role: "{{role}}"
+  when: role != ''
+  tags: live
+
+- set_es_configs:
+    es_role: "{{es_role}}"
+    consul_data: "{{consul_data}}"
+  tags: live
+
+- name: Create elasticsearch service override
+  file:
+    path: /etc/systemd/system/elasticsearch.service.d
+    state: directory
+    owner: root
+    group: elasticsearch
+    mode: 0664
+  become: true
+
+- name: Configure elasticsearch service
+  template:
+    src: elasticsearch.override.conf.j2
+    dest: /etc/systemd/system/elasticsearch.service.d/override.conf
+    owner: root
+    group: elasticsearch
+    mode: 0664
+  become: true
+  tags: live
+
+- name: Configure elasticsearch log4j
+  copy:
+    src: log4j2.properties
+    dest: /etc/elasticsearch/log4j2.properties
+    owner: root
+    group: elasticsearch
+    mode: 0664
+  become: true
+
+- name: Configure jvm options
+  template:
+    src: elasticsearch.bootstrap.options.j2
+    dest: /etc/elasticsearch/jvm.options.d/bootstrap.options
+    owner: root
+    group: elasticsearch
+    mode: 0664
+  become: true
+  tags: live
+
+- name: Configure elasticsearch
+  template:
+    src: elasticsearch.yml.j2
+    dest: /etc/elasticsearch/elasticsearch.yml
+    owner: root
+    group: elasticsearch
+    mode: 0664
+  become: true
+  tags: live
+
+- name: Configure datadog for elasticsearch
+  template:
+    src: elasticsearch.conf.yaml.j2
+    dest: /etc/datadog-agent/conf.d/elastic.d/conf.yaml
+    owner: dd-agent
+    group: dd-agent
+    mode: 0644
+  become: true
+  tags: live
+
+- name: Configure datadog for elasticsearch openmetrics
+  copy:
+    src: openmetrics.conf.yaml
+    dest: /etc/datadog-agent/conf.d/openmetrics.d/conf.yaml
+    owner: dd-agent
+    group: dd-agent
+    mode: 0644
+  become: true
+
+- name: Disable swap
+  command: swapoff -a
+  become: true
+  tags: live
+
+- name: Ensure data permission
+  file:
+    path: '{{ elasticsearch_data_path }}'
+    state: directory
+    recurse: yes
+    owner: elasticsearch
+    group: elasticsearch
+  become: true
+  tags: live
+
+- name: Restart datadog
+  service: name=datadog-agent state=restarted
+  become: true
+  tags: live
+
+- name: Enable elasticsearch service
+  systemd:
+    name: elasticsearch.service
+    state: started
+    daemon_reload: true
+    enabled: false
+  become: true
+  tags: live
+
+- name: setup ansible-local post boot
+  template:
+    src: ansible-local.service.j2
+    dest: /etc/systemd/system/ansible-local.service
+    mode: 0644
+  when: ansible_local_playbooks | length > 0
+  become: true
+
+- systemd:
+    name: ansible-local.service
+    state: stopped
+    daemon_reload: true
+    enabled: true
+  when: ansible_local_playbooks | length > 0
+  become: true

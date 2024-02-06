@@ -1,0 +1,29 @@
+--- 
+- get_master_ip:
+    ec2_facts: "{{nuproj_instance_facts}}"
+    consul_data: "{{consul_data}}" 
+  tags: ['live']
+
+- name: Configure sentinel
+  template: src=sentinel.conf.j2 dest=/etc/redis/sentinel.conf mode=0644 owner=redis group=redis
+  tags: ['live']
+  become: true
+
+- name: Configure sentinel notify
+  template: src=nuproj-redis-aws-notify.sh.j2 dest=/etc/redis/nuproj-redis-aws-notify.sh mode=0777 owner=redis group=redis
+  tags: ['live']
+  become: true
+
+- name: redis-sentinel restart
+  service: name=redis-sentinel state=restarted
+  tags: ['live']
+  become: true
+
+- name: redis-sentinel restart
+  systemd:
+    name: redis-sentinel.service
+    state: restarted
+    daemon_reload: true
+    enabled: true
+  become: true
+  tags: ['live']

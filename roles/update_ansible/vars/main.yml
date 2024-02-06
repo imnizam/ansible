@@ -1,0 +1,6 @@
+---
+app:
+  production:
+    s3_ci_package_bucket: nuproj-ci-packages
+  staging:
+    s3_ci_package_bucket: nuprojstaging-ci-packages

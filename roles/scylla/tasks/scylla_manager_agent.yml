@@ -1,0 +1,38 @@
+---
+- name: Download Scylla Manager {{ scylladb[swversion].manager_release }} repo for Ubuntu 16.04 (Xenial)
+  get_url: url=http://downloads.scylladb.com/deb/ubuntu/scylladb-manager-{{scylladb[swversion].manager_release}}-xenial.list dest=/etc/apt/sources.list.d/scylla-manager.list
+  when: ansible_distribution == 'Ubuntu' and ansible_distribution_release == 'xenial'
+  become: true
+
+- name: Update apt cache on Debian / Ubuntu
+  apt: update_cache=true
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  become: true
+
+- name: Install scylla manager agent {{ scylladb[swversion].manager_release }} on Debian / Ubuntu
+  apt: name=scylla-manager-agent state=present allow_unauthenticated=yes force=yes
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  become: true
+
+# configure at live
+- name: Run Scylla Manager agent Setup
+  shell: "echo -e 'yes\nyes' | scyllamgr_agent_setup"
+  become: true
+  tags: live
+
+# place token
+- lineinfile:
+    path: /etc/scylla-manager-agent/scylla-manager-agent.yaml
+    regexp: '^#?auth_token:.*$'
+    line: "auth_token: {{ consul_data.ScyllaManagerAuthToken | default('')}}"
+  tags: live
+  become: true
+
+- name: start scylla-manager-agent service
+  systemd:
+    name: scylla-manager-agent.service
+    state: restarted
+    daemon_reload: true
+    enabled: true
+  become: true
+  tags: live

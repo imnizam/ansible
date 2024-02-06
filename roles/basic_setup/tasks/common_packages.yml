@@ -1,0 +1,48 @@
+---
+
+- name: Update apt cache
+  apt:
+    update_cache: true
+  become: true
+  
+- name: install packages
+  apt:
+    name: ['logrotate', 'zip', 'jq', 'git', 'python-pip', 'runit', 'apt-transport-https', 'ca-certificates', 'software-properties-common', 'curl']
+    state: present
+    update_cache: yes
+  become: true
+
+- shell: /bin/bash -c "pip install --upgrade pip"
+  become: true
+
+# - name: pip upgrade
+#   pip:
+#     name: pip
+#     extra_args: --upgrade
+#   become: true
+
+- name: awscli uninstall
+  pip:
+    name: awscli
+    state: absent
+  become: true
+
+- name: install python packages
+  pip:
+    name: "{{item.name}}"
+  with_items:
+    - name: awscli
+    - name: boto3
+    - name: boto
+    - name: redis==2.10.6
+    - name: requests
+    - name: python-consul
+  become: true
+
+- name: Link to secondary location of aws cli
+  file:
+    src: /usr/local/bin/aws
+    dest: /usr/bin/aws
+    state: link
+    mode: 0777
+  become: true

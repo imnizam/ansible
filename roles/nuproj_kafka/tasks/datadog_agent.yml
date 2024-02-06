@@ -1,0 +1,18 @@
+---
+#This playbook sets up datadog agent on ubuntu machines
+- name: Copying zk dd-agent configuration file
+  template: src=kafka.yaml dest=/etc/dd-agent/conf.d/kafka.yaml
+  become: true
+  tags: ['live']
+
+# - lineinfile:
+#     path: /etc/dd-agent/datadog.conf
+#     regexp: '^#?tags:.*$'
+#     line: "tags: environment:{{nuproj_environment}}, cluster:{{nuproj_cluster}}, service:{{nuproj_service}}"
+#   tags: ['live']
+#   become: true
+
+- name: restart ddog
+  service: name=datadog-agent state=restarted
+  become: true
+  tags: ['live']

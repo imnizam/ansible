@@ -1,0 +1,25 @@
+#!/bin/bash
+
+instance_id=`curl -s http://169.254.169.254/latest/meta-data/instance-id`
+
+instance_lifecycle=`aws ec2  --region "us-west-2" describe-instances --instance-ids $instance_id --query "Reservations[0].Instances[0].InstanceLifecycle" | tr -d '"'`
+
+current_path=$(cd $(dirname "$1") && pwd -P)/$(basename "$1")
+
+if [ "$instance_lifecycle" == "spot" ];then
+
+	while true;
+	do
+		if curl -s http://169.254.169.254/latest/meta-data/spot/termination-time | grep -q .*T.*Z; then
+			${current_path}/ecs_cluster_deregister.sh &
+      		/usr/bin/python /opt/nuproj/putback_hostnumber.py &
+      		{% if LaunchMode in ['asg_fleet'] %}
+      		/usr/bin/python ${current_path}/clear_sqs_sns.py &
+      		{% endif %}
+      		logger "Spot Instance $instance_id termination status : YES"
+			break
+		fi
+		sleep 5
+    logger "Spot Instance $instance_id termination status : NO"
+	done
+fi

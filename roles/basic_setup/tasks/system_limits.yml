@@ -1,0 +1,52 @@
+---
+- name: set sysctl limits
+  sysctl:
+    name: vm.swappiness
+    value: 1
+    state: present
+  become: true
+- sysctl:
+    name: net.core.somaxconn
+    value: 65535
+    state: present
+  become: true
+- sysctl:
+    name: vm.max_map_count
+    value: 3000000
+    state: present
+  become: true
+- sysctl:
+    name: fs.file-max
+    value: 518144
+    state: present
+  become: true
+
+- name: set security limits
+  pam_limits:
+    domain: root
+    limit_type: '-'
+    limit_item: nofile
+    value: 262144
+  become: true
+- pam_limits:
+    domain: root
+    limit_type: '-'
+    limit_item: memlock
+    value: unlimited
+  become: true
+- pam_limits:
+    domain: '*'
+    limit_type: '-'
+    limit_item: nofile
+    value: 262144
+  become: true
+- pam_limits:
+    domain: '*'
+    limit_type: '-'
+    limit_item: memlock
+    value: unlimited
+  become: true
+
+- name: Copy limits file
+  template: src=limits.conf dest=/etc/security/limits.conf
+  become: true

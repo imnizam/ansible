@@ -1,0 +1,33 @@
+- get_host_list:
+    ec2_facts: "{{nuproj_instance_facts}}"
+
+- debug: var=all_reservations
+- debug: var=zk_hostname
+- debug: var=all_zk_hosts
+
+- set_fact:
+    heap_size: "{{consul_data.HeapSize | default(HeapSize)}}"
+
+- name: Configure zoo.cfg
+  template:
+    src: zoo_sample.cfg.j2
+    dest: "{{ INSTALLATION_DIR }}/zookeeper/conf/zoo.cfg"
+    mode: 0644
+
+- name: Configure Java JMX
+  template:
+    src: java.env.j2
+    dest: "{{ INSTALLATION_DIR }}/zookeeper/conf/java.env"
+    mode: 0644
+
+- name: Configure log4j.properties
+  template:
+    src: log4j.properties.j2
+    dest: "{{ INSTALLATION_DIR }}/zookeeper/conf/log4j.properties"
+    mode: 0644
+
+- name: Configure myid
+  template:
+    src: myid.j2
+    dest: "{{ ZOOKEEPER_DATA_DIR }}/myid"
+    mode: 0644

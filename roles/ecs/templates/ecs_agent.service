@@ -1,0 +1,51 @@
+[Unit]
+Description=ECS agent installation
+After=ecs_instance_post_boot_setup.service
+
+[Service]
+Environment=ECS_CLUSTER={{nuproj_cluster}}
+Environment=ECS_LOGLEVEL=info
+Environment=ECS_VERSION={{consul_data.ECSAgentVersion}}
+Restart=always
+RestartSec=30
+RestartPreventExitStatus=5
+SyslogIdentifier=ecs-agent
+ExecStartPre=-/usr/bin/docker stop ecs-agent
+ExecStartPre=-/usr/bin/docker rm ecs-agent
+ExecStartPre=/usr/bin/docker pull amazon/amazon-ecs-agent:${ECS_VERSION}
+ExecStart=/usr/bin/docker run --name ecs-agent \
+              --init \
+              --restart=on-failure:10 \
+              --volume=/var/run:/var/run \
+              --volume=/var/log/ecs/:/log \
+              --volume=/var/lib/ecs/data:/data \
+              --volume=/etc/ecs:/etc/ecs \
+              --volume=/sbin:/sbin \
+              --volume=/lib:/lib \
+              --volume=/lib64:/lib64 \
+              --volume=/usr/lib:/usr/lib \
+              --volume=/proc:/host/proc \
+              --volume=/sys/fs/cgroup:/sys/fs/cgroup \
+              --volume=/var/lib/ecs/dhclient:/var/lib/dhclient \
+              --net=host \
+              --log-opt tag={% raw -%}"{{.DaemonName}}/ecs-agent/ecs/{{.Name}}/{{.ID}}"{% endraw %} \
+              --env=ECS_LOGFILE=/log/ecs-agent.log \
+              --env=ECS_LOGLEVEL=${ECS_LOGLEVEL} \
+              --env=ECS_DATADIR=/data \
+              --env ECS_UPDATES_ENABLED=false \
+              --env=ECS_ENABLE_TASK_ENI=true \
+              --env=ECS_CLUSTER=${ECS_CLUSTER} \
+              --env=ECS_ENABLE_TASK_IAM_ROLE=true \
+              --env ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true \
+              --env ECS_UPDATES_ENABLED=true \
+              --env=ECS_ENGINE_TASK_CLEANUP_WAIT_DURATION=20m \
+              --env=ECS_CONTAINER_STOP_TIMEOUT=5m \
+              --env=ECS_AVAILABLE_LOGGING_DRIVERS=[\"awslogs\",\"json-file\",\"journald\",\"syslog\",\"fluentd\"] \
+              --env=ECS_ENABLE_CONTAINER_METADATA=true \
+              --cap-add=sys_admin \
+              --cap-add=net_admin \
+              amazon/amazon-ecs-agent:${ECS_VERSION}
+TimeoutSec=30
+
+[Install]
+WantedBy=multi-user.target

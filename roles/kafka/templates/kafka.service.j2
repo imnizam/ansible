@@ -1,0 +1,18 @@
+[Unit]
+Description=kafka systemd service
+After=cloud-init.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+LimitNOFILE=1000000
+LimitMEMLOCK=infinity
+Environment='KAFKA_HEAP_OPTS=-Xmx{{heap_size}} -Xms{{heap_size}}'
+ExecStart=/usr/local/kafka/bin/kafka-server-start.sh /usr/local/kafka/config/server.properties
+ExecStop=/bin/bash -c "/usr/local/kafka/bin/kafka-server-stop.sh || :"
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=cloud-init.target

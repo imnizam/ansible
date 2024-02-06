@@ -1,0 +1,11 @@
+---
+elasticsearch_version: 7.9.2
+elasticsearch_data_path: /var/lib/elasticsearch
+elasticsearch_log_path: /var/log/elasticsearch
+official_plugins:
+  - discovery-ec2
+  - repository-s3
+custom_plugins:
+  - index-exp
+  - repository-s3-snapshots
+  - connector-pulsar

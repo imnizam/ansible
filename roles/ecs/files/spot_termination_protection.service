@@ -1,0 +1,11 @@
+[Unit]
+Description=Spot termination protection
+After=multi-user.target
+
+[Service]
+WorkingDirectory=/home/ubuntu/ecs/scripts
+ExecStart=/bin/bash spot_termination_protection.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

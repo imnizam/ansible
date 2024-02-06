@@ -1,0 +1,29 @@
+# scylla home dir
+SCYLLA_HOME=/var/lib/scylla
+
+# scylla config dir
+SCYLLA_CONF=/etc/scylla
+
+# The jmx port to open
+SCYLLA_JMX_PORT="-jp 7199"
+
+# The API port to connect to
+#SCYLLA_API_PORT="-p 10000"
+
+# API address to connect to
+#SCYLLA_API_ADDR="-a localhost"
+
+# use alternate jmx address
+SCYLLA_JMX_ADDR="-ja 0.0.0.0"
+
+# A configuration file to use
+#SCYLLA_JMX_FILE="-cf /etc/scylla.d/scylla-user.cfg"
+
+# The location of the jmx proxy jar file
+SCYLLA_JMX_LOCAL="-l /usr/lib/scylla/jmx"
+
+# allow to run remotely
+SCYLLA_JMX_REMOTE="-r"
+
+# allow debug
+#SCYLLA_JMX_DEBUG="-d"

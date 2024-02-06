@@ -1,0 +1,23 @@
+[Unit]
+Description=After bootup custom configuration
+After=cloud-init.target
+
+[Service]
+RestartSec=30
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/ansible
+Environment="TAGS={{ansible_local_tags | join(',')}}"
+Environment="PLAYBOOKS={{ansible_local_playbooks | join(' ')}}"
+ExecStartPre=/bin/sleep 180
+ExecStartPre=/usr/bin/ansible-playbook -i "localhost," -c local playbooks/update_ansible.yml
+{% if ansible_local_tags | length > 0 -%}
+  ExecStart=/usr/bin/ansible-playbook -v -i "localhost," -c local -t ${TAGS} playbooks/${PLAYBOOKS}
+{% else %}
+  ExecStart=/usr/bin/ansible-playbook -v -i "localhost," -c local playbooks/${PLAYBOOKS}
+{% endif %}
+TimeoutSec=1200
+Restart=on-failure
+
+[Install]
+WantedBy=cloud-init.target

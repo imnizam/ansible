@@ -1,0 +1,51 @@
+---
+- name: Check if zookeeper is installed
+  stat:
+    path: "{{ ZOOKEEPER_HOME }}"
+  register: zoo
+  tags: ['live']
+
+- name: Check if zookeeper is already installed
+  stat:
+    path: "{{ ZOOKEEPER_HOME }}"
+  register: zoo_inst
+  tags: ['install']
+
+- name: Install Zookeeper
+  include: install.yml
+  tags: ['install']
+  when: zoo_inst.stat.exists == False
+
+- name: Configure Zookeeper
+  include: configure.yml
+  tags: ['live']
+  when: zoo.stat.exists
+
+- name: Check if zookeeper installation successful
+  stat:
+    path: "{{ ZOOKEEPER_HOME }}"
+  register: zk_installed
+  tags: ['install']
+
+- name: Fail play if Zookeeper installation failed
+  fail:
+    msg: "Zookeeper installation failed"
+  when: zk_installed.stat.exists == False
+  tags: ['install']
+
+- name: setup zookeeper service
+  template:
+    src: zookeeper.service.j2
+    dest: /etc/systemd/system/zookeeper.service
+    mode: 0644
+  become: true
+  tags: ['live']
+
+- name: start zookeeper service
+  systemd:
+    name: zookeeper.service
+    state: restarted
+    daemon_reload: true
+    enabled: true
+  become: true
+  tags: ['live']

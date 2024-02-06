@@ -1,0 +1,21 @@
+---
+# Maintainer Nizam Uddin <https://github.com/imnizam>
+
+- name: ecs
+  hosts: all
+  remote_user: ubuntu
+
+  vars:
+    ansible_local_playbooks: ['ecs_setup_v2.yml']
+    ansible_local_tags: ['live']
+    ecs_tmp_dir: /mnt/var/tmp
+  roles:
+    - role: ./roles/ansible_local
+
+    - role: ./roles/basic_setup
+
+    - role: ./roles/basic_facts
+
+    - role: ./roles/ecs
+
+

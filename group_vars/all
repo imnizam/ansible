@@ -1,0 +1,9 @@
+---
+# Variables listed here are applicable to all host groups
+
+docker_insecure_registry: docker-registry.myorg.vpc
+staging_docker_insecure_registry: staging-docker-registry.myorg.vpc
+docker_home_dir: /mnt/var/lib/docker
+docker_storage_driver: overlay2
+docker_logging_driver: syslog
+ansible_temp_dir: /tmp

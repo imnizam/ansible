@@ -1,0 +1,24 @@
+---
+- name: install packages
+  apt:
+    name: ['chrony']
+    state: present
+  become: true
+
+- lineinfile:
+    path: /etc/chrony/chrony.conf
+    regexp: '^pool.*$'
+    state: absent
+  become: true
+
+- lineinfile:
+    path: /etc/chrony/chrony.conf
+    line: "server 169.254.169.123 prefer iburst minpoll 4 maxpoll 4"
+    state: present
+  become: true
+
+- service:
+    name: chrony
+    enabled: yes
+    state: stopped
+  become: true

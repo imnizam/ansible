@@ -1,0 +1,20 @@
+---
+- name: create logs directory exists
+  file:
+    path: /home/ubuntu/ansible/logs
+    state: directory
+    mode: 0755
+  become: true
+- name: setup ansible-local post boot
+  template:
+    src: ansible-local.service.j2
+    dest: /etc/systemd/system/ansible-local.service
+    mode: 0644
+  when: ansible_local_playbooks | length > 0
+  become: true
+
+- service:
+    name: ansible-local
+    enabled: yes
+  when: ansible_local_playbooks | length > 0
+  become: true

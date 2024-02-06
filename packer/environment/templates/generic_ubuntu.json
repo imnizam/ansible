@@ -1,0 +1,86 @@
+{
+  "variables": {
+    "aws_profile": "",
+    "aws_access_key": "",
+    "aws_secret_key": "",
+    "region": null,
+    "source_ami": null,
+    "vpc_id": null,
+    "subnet_id": null,
+    "security_group_ids": null,
+    "version": null,
+    "commit_id": null,
+    "instance_type": null,
+    "iam_instance_profile": ""
+  },
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "profile": "{{user `aws_profile`}}",
+      "access_key": "{{user `aws_access_key`}}",
+      "secret_key": "{{user `aws_secret_key`}}",
+      "region": "{{user `region`}}",
+      "source_ami": "{{user `source_ami`}}",
+      "instance_type": "{{user `instance_type`}}",
+      "vpc_id": "{{user `vpc_id`}}",
+      "subnet_id": "{{user `subnet_id`}}",
+      "security_group_ids": "{{user `security_group_ids`}}",
+      "ssh_username": "ubuntu",
+      "ami_name": "nuproj-{{user `service`}}-{{user `version`}}",
+      "ami_virtualization_type": "hvm",
+      "ssh_interface": "private_ip",
+      "force_deregister": true,
+      "iam_instance_profile": "{{ user `iam_instance_profile`}}",
+      "tags": {
+        "Service": "{{user `service`}}",
+        "Version": "{{user `version`}}",
+        "Commit_Id": "{{user `commit_id`}}"
+      },
+      "launch_block_device_mappings": [
+        {
+          "device_name": "{{user `root_device_name`}}",
+          "volume_size": "{{user `root_volume_size`}}",
+          "volume_type": "gp2",
+          "delete_on_termination": true
+        }
+    ]}
+  ],
+  "provisioners": [{
+      "type": "shell",
+      "inline": [
+        "[ -d ansible ] || mkdir ansible",
+        "[ -d .ssh ] || mkdir .ssh",
+        "echo '{{user `public_key`}}' >> .ssh/authorized_keys"
+      ]
+    },
+    {
+      "type": "shell",
+      "execute_command": "echo '{{user `ssh_pass`}}' | {{ .Vars }} sudo -E -S sh '{{ .Path }}'",
+      "inline": [
+        "sudo apt-get --assume-yes update",
+        "sudo apt-get install software-properties-common",
+        "sudo apt-add-repository ppa:ansible/ansible",
+        "sudo apt-get update",
+        "sudo apt-get install --allow-unauthenticated -y ansible",
+        "sudo echo '%sudo    ALL=(ALL)  NOPASSWD:ALL' >> /etc/sudoers"
+      ]
+    },
+    {
+      "type": "ansible-local",
+      "playbook_dir": "./",
+      "staging_directory": "/home/ubuntu/ansible",
+      "playbook_file": "./playbooks/{{user `playbook`}}",
+      "extra_arguments": [ "--skip-tags", "{{user `skip_tag`}}" ]
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo systemctl stop apt-daily.timer",
+        "sudo systemctl stop apt-daily-upgrade.timer",
+        "sudo rm /var/lib/systemd/timers/stamp-apt-daily.timer",
+        "sudo rm /var/lib/systemd/timers/stamp-apt-daily-upgrade.timer",
+        "sudo dpkg --configure -a"
+      ]
+    }
+  ]
+}

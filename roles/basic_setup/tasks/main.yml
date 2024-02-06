@@ -1,0 +1,5 @@
+---
+- include_tasks: common_packages.yml
+- include_tasks: directory_setup.yml
+- include_tasks: system_limits.yml
+- include_tasks: sysclock.yml

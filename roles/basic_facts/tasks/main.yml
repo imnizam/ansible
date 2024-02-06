@@ -1,0 +1,122 @@
+---
+- setup:
+  tags: ['live']
+
+- ec2_metadata_facts:
+  tags: ['live']
+
+- set_region:
+    region: '{{ansible_ec2_placement_region}}'
+  tags: ['live']
+
+- ec2_instance_info:
+    region: "{{ansible_ec2_placement_region}}"
+    instance_ids: "{{ansible_ec2_instance_id}}"
+  register: ec2_instance_facts_result
+  tags: ['live']
+
+- set_fact:
+    nuproj_instance_facts: '{{ec2_instance_facts_result.instances[0]}}'
+  tags: ['live']
+
+- fail:
+    msg: " ERROR: 'ConsulHost' tag is not added to instance. Check its case sensitive"
+  when: nuproj_instance_facts.tags.ConsulHost is not defined
+  tags: ['live']
+
+- fail:
+    msg: "ERROR: 'ConsulKey' tag is not added to instance. Check its case sensitive"
+  when: nuproj_instance_facts.tags.ConsulKey is not defined
+  tags: ['live']
+
+- set_fact:
+    consul_host: "{{nuproj_instance_facts.tags.ConsulHost}}"
+  when: nuproj_instance_facts.tags.ConsulHost is defined
+  tags: ['live']
+
+- set_fact:
+    consul_port: "{{nuproj_instance_facts.tags.ConsulPort | default(80)}}"
+  tags: ['live']
+
+- set_fact:
+    consul_key: "{{nuproj_instance_facts.tags.ConsulKey}}"
+  when: nuproj_instance_facts.tags.ConsulKey is defined
+  tags: ['live']
+
+- set_fact:
+    consul_data: "{{ lookup('consul_kv', consul_key, host=consul_host, port=consul_port) }}"
+  when: nuproj_instance_facts.tags.ConsulHost is defined
+  tags: ['live']
+
+- set_environment:
+    environment: '{{consul_data.Environment}}'
+  tags: ['live']
+
+- set_fact:
+    nuproj_environment: '{{consul_data.Environment}}'
+    nuproj_service: '{{consul_data.Service }}'
+    nuproj_cluster: '{{consul_data.Cluster}}'
+    nuproj_role: "{{consul_data.Role | default('')}}"
+    environment: '{{consul_data.Environment}}'
+    service: '{{consul_data.Service }}'
+    cluster: '{{consul_data.Cluster}}'
+    role: "{{consul_data.Role | default('')}}"
+  tags: ['live']
+
+- set_fact:
+    hosted_zone: '{{consul_data.Hostname.HostnameHostedZone}}'
+    hostname_hosted_zone: '{{consul_data.Hostname.HostnameHostedZone}}'
+  when: consul_data.Hostname.HostnameHostedZone is defined
+  tags: ['live']
+
+- set_fact:
+    instance_az: "{{nuproj_instance_facts.placement.availability_zone}}"
+  tags: ['live']
+
+- set_fact:
+    instance_az_short: "{{instance_az| regex_search('[1-9]?[a-z]?$')}}"
+  tags: ['live']
+
+- name: Add tags
+  ec2_tag:
+    region: "{{region}}"
+    resource: "{{ansible_ec2_instance_id}}"
+    tags:
+      Environment: "{{nuproj_environment}}"
+      Service: "{{nuproj_service}}"
+      Cluster: "{{nuproj_cluster}}"
+      Role: "{{nuproj_role}}"
+      OS: "{{ansible_distribution}}-{{ansible_distribution_version}}"
+      nuproj_stack: "{{consul_data.nuproj_stack | default(nuproj_service.lower() + '-' + nuproj_cluster.lower())}}"
+    state: present
+  tags: ['live']
+
+- name: Add Name tags
+  ec2_tag:
+    region: "{{region}}"
+    resource: "{{ansible_ec2_instance_id}}"
+    tags:
+      Name: "{{ansible_hostname}}"
+    state: present
+  tags: ['live']
+  # when: (ansible_hostname.find(nuproj_service) == -1) or (nuproj_service in ansible_hostname)
+
+- name: Add prometheus tag
+  ec2_tag:
+    region: "{{region}}"
+    resource: "{{ansible_ec2_instance_id}}"
+    tags:
+      Prometheus: "{{consul_data.Prometheus.DiscoveryTag}}"
+    state: present
+  tags: ['live']
+  when: consul_data.Prometheus is defined
+
+- ec2_instance_info:
+    region: "{{ansible_ec2_placement_region}}"
+    instance_ids: "{{ansible_ec2_instance_id}}"
+  register: ec2_instance_facts_result
+  tags: ['live']
+
+- set_fact:
+    nuproj_instance_facts: '{{ec2_instance_facts_result.instances[0]}}'
+  tags: ['live']

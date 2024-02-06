@@ -1,0 +1,8 @@
+#Execute given command to build EC2 AMI
+#It requires host mahcine to have AWS API keys or proper IAM role attached
+
+**Command :**
+
+packer build -var "version=v1.1.9" -var-file=packer/environment/production/kafka.json packer/environment/templates/generic_ubuntu.json
+
+**PS: check old verion number first in EC2/AMI console, then increment version number. If not incremented it'll override existing one.**

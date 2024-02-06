@@ -1,0 +1,50 @@
+- name: Check if kafka is installed
+  stat:
+    path: "{{ KAFKA_HOME }}"
+  register: kafka
+  tags: ['live']
+
+- name: Check if kafka is already installed
+  stat:
+    path: "{{ KAFKA_HOME }}"
+  register: kafka_install
+  tags: ['install']
+
+- name: Install Kakfa
+  include: install.yml
+  tags: ['install']
+  when: kafka_install.stat.exists == False
+
+- name: Configure Kakfa
+  include: configure.yml
+  tags: ['live']
+  when: kafka.stat.exists
+
+- name: Check if kafka installation successful
+  stat:
+    path: "{{ KAFKA_HOME }}"
+  register: kafka_installed
+  tags: ['install']
+
+- name: Fail play if Kakfa installation failed
+  fail:
+    msg: "Kakfa installation failed"
+  when: kafka_installed.stat.exists == False
+  tags: ['install']
+
+- name: setup kafka service
+  template:
+    src: kafka.service.j2
+    dest: /etc/systemd/system/kafka.service
+    mode: 0644
+  become: true
+  tags: ['live']
+
+- name: start kafka service
+  systemd:
+    name: kafka.service
+    state: restarted
+    daemon_reload: true
+    enabled: true
+  become: true
+  tags: ['live']

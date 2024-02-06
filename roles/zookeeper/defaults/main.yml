@@ -1,0 +1,4 @@
+---
+# recommended heap size: 8GB
+# https://docs.confluent.io/current/zookeeper/deployment.html#memory
+HeapSize: 8g

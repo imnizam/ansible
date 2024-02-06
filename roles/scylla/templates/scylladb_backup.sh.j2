@@ -1,0 +1,94 @@
+#!/bin/bash
+cmd=$0
+if [ $# -lt 1 ]; then
+    echo "usage: ${cmd} <cluster-name> <keyspace-name>"
+    /usr/bin/logger "${cmd}: Failed to run due to missing clustername"
+    exit 1
+fi
+
+/usr/bin/logger "${cmd} entering scylla backup"
+cluster=$1
+keyspace=$2
+
+port="9042"
+node=`hostname -I`
+nodename=`hostname`
+datedir=`date +%Y%m%d`
+s3bucket="{{consul_data.DBBackupS3Bucket}}"
+cqlshcmd="/usr/bin/cqlsh"
+nodetoolcmd="/usr/bin/nodetool"
+
+#basedir="/var/lib/scylla/data/${keyspace}"
+basedir="/var/lib/scylla/data/"
+
+schemafile="${cluster}-schema.cql"
+
+# clear any older snapshots first.
+#${nodetoolcmd} clearsnapshot ${keyspace}
+${nodetoolcmd} clearsnapshot
+
+# trigger the snapshot now
+if [ "x$keyspace" = "xall" -o "x$keyspace" = "x" ]; then
+  ssdir=`${nodetoolcmd} snapshot |grep "Snapshot directory:" | awk '{print $3}'`
+     /usr/bin/logger "${cmd} creating snapshot for all"
+
+else
+  ssdir=`${nodetoolcmd} snapshot ${keyspace} |grep "Snapshot directory:" | awk '{print $3}'`
+     /usr/bin/logger "${cmd} creating snapshot for ${keyspace} "
+fi
+/usr/bin/logger "${cmd} scylla backup - ssdir is ${ssdir}"
+
+if [ -z "$ssdir" ]; then
+    /usr/bin/logger "${cmd} failed to capture snapshot directory"
+    ${nodetoolcmd} clearsnapshot
+    exit 1
+fi
+# save the schema
+${cqlshcmd} ${node} ${port} -e "DESC SCHEMA" >${schemafile}
+
+aws s3 cp ${schemafile} s3://${s3bucket}/${cluster}/${datedir}/${nodename}/${schemafile}
+sleep 2
+aws s3 ls s3://${s3bucket}/${cluster}/${datedir}/${nodename}/${schemafile} >/dev/null
+if [ $? -eq 0 ]; then
+  rm -f ${schemafile}
+fi
+
+# copy the files out to S3 folder
+aws configure set default.s3.max_bandwidth 30MB/s
+/usr/bin/logger "${cmd} scylla backup - setting s3 30mb/s"
+
+cd ${basedir}
+if [ "x$keyspace" = "xall" -o "x$keyspace" = "x" ]; then
+  #appkeyspaces=`/bin/ls | grep -v system`
+  appkeyspaces=`/bin/ls`
+else
+  appkeyspaces=${keyspace}
+fi
+
+/usr/bin/logger "${cmd} scylla backup - appkeyspaces ${appkeyspaces}"
+
+for keyspace in ${appkeyspaces}
+do
+  if [ ! -d ${keyspace} -o -L ${keyspace} ]; then
+    continue;
+  fi
+  cd ${keyspace}
+  for snap in `sudo ls -1 -d */snapshots/${ssdir}`
+  do
+    name=`echo ${snap} | awk -F'/' '{print $1}'`
+    for file in `find ${snap} -type f`
+    do
+      /bin/dd bs=1M if=${file} iflag=direct status=none | /usr/local/bin/aws s3 cp - s3://${s3bucket}/${cluster}/${datedir}/${nodename}/${keyspace}/${file}
+    done
+  done
+  cd -
+done
+
+# clear the snapshot only if copy is successful
+
+# this is not actually capturing and handling the errors from S3 copy, TBD.
+if [ $? -eq 0 ]; then
+    /usr/bin/logger "${cmd} clearing snapshots after successful copy out"
+    ${nodetoolcmd} clearsnapshot
+fi
+/usr/bin/logger "${cmd} scylladb backup finished"

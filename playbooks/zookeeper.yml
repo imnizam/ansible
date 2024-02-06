@@ -1,0 +1,16 @@
+---
+# Maintainer Nizam Uddin <https://github.com/imnizam>
+- name: zookeeper
+  hosts: all
+  user: ubuntu
+  become: true
+  vars:
+    DNS: true
+  roles:
+    - role: ./roles/basic_setup
+
+    - role: ./roles/basic_facts
+
+    - role: ./roles/nuproj_zookeeper
+
+    - role: ./roles/zookeeper

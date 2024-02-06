@@ -1,0 +1,5 @@
+-Xms{{(((ansible_memtotal_mb * 0.80)/1024) | int) if ((ansible_memtotal_mb * 0.80)/1024) < 31 else 31}}g
+-Xmx{{(((ansible_memtotal_mb * 0.80)/1024) | int) if ((ansible_memtotal_mb * 0.80)/1024) < 31 else 31}}g
+
+-Des.enforce.bootstrap.checks=true
+-Des.search.ignore_awareness_attributes=true

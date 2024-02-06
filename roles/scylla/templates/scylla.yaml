@@ -1,0 +1,34 @@
+cluster_name: {{ cluster_name }}
+num_tokens: 256
+data_file_directories:
+    - /var/lib/scylla/data
+
+commitlog_directory: /var/lib/scylla/commitlog
+commitlog_sync: periodic
+commitlog_sync_period_in_ms: 10000
+commitlog_segment_size_in_mb: 32
+
+seed_provider:
+    - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+      parameters:
+          - seeds: {{ seeds }}
+
+listen_address: {{ ansible_default_ipv4['address'] }}
+
+native_transport_port: 9042
+read_request_timeout_in_ms: 5000
+write_request_timeout_in_ms: 2000
+endpoint_snitch: Ec2Snitch
+rpc_address: {{ ansible_default_ipv4['address'] }}
+rpc_port: 9160
+
+api_port: 10000
+api_address: 127.0.0.1
+
+batch_size_warn_threshold_in_kb: 5
+batch_size_fail_threshold_in_kb: 50
+partitioner: org.apache.cassandra.dht.Murmur3Partitioner
+commitlog_total_space_in_mb: -1
+murmur3_partitioner_ignore_msb_bits: 12
+api_ui_dir: /usr/lib/scylla/swagger-ui/dist/
+api_doc_dir: /usr/lib/scylla/api/api-doc/

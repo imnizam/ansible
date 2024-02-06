@@ -1,0 +1,11 @@
+[Unit]
+Description=Ec2 Lifecycle termination handler
+After=multi-user.target
+
+[Service]
+WorkingDirectory=/home/ubuntu/ecs/scripts
+ExecStart=/usr/bin/python lifecycle_sqs_listener.py
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+---
+- name: Install sentinel
+  import_tasks: install.yml
+  become: true
+
+- name: Configure sentinel
+  import_tasks: configure.yml
+  become: true
+  when: nuproj_service in "sentinel"
+  tags: ['live']
+  

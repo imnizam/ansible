@@ -1,0 +1,118 @@
+---
+## This playbook assumes you are installing Scylla using the same disks and NIC for all nodes ##
+# binary installation
+- name: Install apt-transport-https on Debian / Ubuntu
+  apt: name=apt-transport-https state=present allow_unauthenticated=yes force=yes
+  become: true
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+
+- apt_key: keyserver=keyserver.ubuntu.com  id=6B2BFD3660EF3F5B
+  become: true
+
+- apt_key: keyserver=keyserver.ubuntu.com  id=17723034C56D4B19
+  become: true
+
+- apt_key: keyserver=keyserver.ubuntu.com  id=5e08fbd8b5d6ec9c
+  become: true
+
+- name: Download Scylla {{ scylladb[swversion].release }} repo for Ubuntu 16.04 (Xenial)
+  get_url: url=http://repositories.scylladb.com/scylla/repo/{{scylladb[swversion].apt_repo_key}}/ubuntu/scylladb-{{scylladb[swversion].release}}-xenial.list dest=/etc/apt/sources.list.d/scylla.list
+  when: ansible_distribution == 'Ubuntu' and ansible_distribution_release == 'xenial'
+  become: true
+
+- name: Update apt cache on Debian / Ubuntu
+  apt: update_cache=true
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  become: true
+
+- name: Install scylla {{ scylladb[swversion].version }} on Debian / Ubuntu
+  apt:
+    name: "{{scylladb[swversion].apt_pkg_name}}"
+    state: present
+    allow_unauthenticated: yes
+    force: yes
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  become: true
+
+# Configure at live
+
+- set_scylla_seeds:
+    ec2_data: "{{nuproj_instance_facts}}"
+  tags: live
+  become: true
+
+- name: Copy scylla config yml file
+  template: src=scylla.yaml dest=/etc/scylla/scylla.yaml mode=0755
+  become: true
+  tags: live
+
+# - set_fact:
+#     backup_schedule: "{{consul_data.BackupSchedule.split(':') }}"
+#   tags: live
+
+# - name: Copy scylladb backup file
+#   template: src=scylladb_backup.sh.j2 dest=/opt/nuproj/scylladb_backup.sh mode=0755
+#   become: true
+#   tags: live
+
+# - cron: name="Run scylladb backup" minute={{backup_schedule[0] if backup_schedule[0] != 'x' else '*' }} hour={{backup_schedule[1] if backup_schedule[1] != 'x' else '*'}} day={{backup_schedule[2] if backup_schedule[2] != 'x' else '*'}} month={{backup_schedule[3] if backup_schedule[3] != 'x' else '*'}} weekday={{backup_schedule[4] if backup_schedule[4] != 'x' else '*'}} user="root" job="/bin/bash -c '/opt/nuproj/scylladb_backup.sh {{cluster_name}} all'"
+#   become: true
+#   ignore_errors: true
+#   tags: live
+
+- name: Run Scylla Setup (XFS format, NIC queue, disk IOtune), this may take a while
+  shell: |
+    disks=$(lsblk -b -d --paths -o "NAME" | grep /dev/nvme)
+    disks_list=$(echo $disks | sed 's/ /,/g')
+    scylla_setup --nic {{ scylladb[swversion].nic }} --setup-nic --disks ${disks_list} --no-ntp-setup
+  become: true
+  ignore_errors: true
+  tags: live
+
+# - name: Add memory reservation in scylla args
+#   action: lineinfile dest=/etc/default/scylla-server regexp="^SCYLLA_ARGS" line="SCYLLA_ARGS='--log-to-syslog 1 --log-to-stdout 0 --default-log-level info --network-stack posix --reserve-memory {{(ansible_memtotal_mb * 0.2/1024)| int }}G'" state=present
+#   tags: live
+
+- name: Copy tsc clock systemd conf file
+  template: src=12-clock.conf dest=/etc/systemd/system/scylla-server.service.d/12-clock.conf mode=0644
+  become: true
+  tags: live
+
+- name: Copy tsc clock systemd conf file
+  template: src=12-clock.conf dest=/etc/systemd/system/scylla-server.service.d/12-clock.conf mode=0644
+  become: true
+  tags: live
+
+- name: Copy jmx conf file
+  template: src=scylla-jmx.j2 dest=/etc/default/scylla-jmx mode=0644
+  become: true
+  tags: live
+
+- name: start scylla-server service
+  systemd:
+    name: scylla-server.service
+    state: restarted
+    daemon_reload: true
+    enabled: true
+  become: true
+  tags: live
+
+- name: start scylla-jmx service
+  systemd:
+    name: scylla-jmx.service
+    state: restarted
+    daemon_reload: true
+    enabled: true
+  become: true
+  tags: live
+
+- name: Sleep for 120 seconds and continue with play
+  wait_for:
+    timeout: 120
+  when: consul_data.Auth is defined
+  tags: live
+  become: true
+
+- import_tasks: scylla_auth.yml
+  when: consul_data.Auth is defined
+  become: true

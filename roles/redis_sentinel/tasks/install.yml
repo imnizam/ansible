@@ -1,0 +1,19 @@
+---
+- name: install redis sentinel
+  apt:
+    name: ['ca-certificates', 'redis-sentinel']
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Configure sentinel
+  template: src=redis-sentinel.service.j2 dest=/lib/systemd/system/redis-sentinel.service mode=0644 owner=root group=root
+  become: true
+
+- name: redis-sentinel disabled
+  systemd:
+    name: redis-sentinel.service
+    state: stopped
+    daemon_reload: yes
+    enabled: no
+  become: true

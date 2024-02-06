@@ -1,0 +1,15 @@
+{
+  "region": "us-west-2",
+  "source_ami": "ami-0b37e9efc396e4c38",
+  "vpc_id": "vpc-abcd",
+  "subnet_id": "subnet-pqrst",
+  "security_group_ids": "sg-01234",
+  "playbook": "ecs_setup_v2.yml",
+  "skip_tag": "live",
+  "service": "ecs",
+  "aws_profile": "staging",
+  "root_device_name": "/dev/sda1",
+  "root_volume_size": "30",
+  "instance_type": "m5.large",
+  "iam_instance_profile": "S3FullAccess"
+}

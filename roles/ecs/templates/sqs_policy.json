@@ -1,0 +1,3 @@
+{
+  "Policy" : "{ \"Version\": \"2012-10-17\", \"Statement\": [{ \"Sid\": \"Sid1472714724390\", \"Effect\": \"Allow\", \"Principal\": { \"AWS\": \"*\" }, \"Action\": \"SQS:SendMessage\", \"Resource\": \"*\", \"Condition\": { \"ArnEquals\": { \"aws:SourceArn\": \"{{consul_data['Hostname']['SNSTopicARN']}}\" } } } ] }"
+}

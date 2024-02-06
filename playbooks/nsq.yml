@@ -1,0 +1,21 @@
+---
+# Maintainer Nizam Uddin <https://github.com/imnizam>
+- name: nsq
+  hosts: all
+  user: ubuntu
+  become: true
+
+  vars:
+    ansible_local_playbooks: ['nsq.yml']
+    ansible_local_tags: ['live']
+    mount_locations: ['/var/lib/nsq']
+    DNS: true
+    nsq_flavor: "vanilla"
+  roles:
+    - role: ./roles/ansible_local
+
+    - role: ./roles/basic_setup
+
+    - role: ./roles/basic_facts
+    
+    - role: ./roles/nsq

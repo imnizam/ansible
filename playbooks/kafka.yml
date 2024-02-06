@@ -1,0 +1,18 @@
+---
+# Maintainer Nizam Uddin <https://github.com/imnizam>
+- name: kafka
+  hosts: all
+  user: ubuntu
+  become: true
+
+  vars:
+    mount_locations: ['/var/log/kafka']
+    DNS: true
+  roles:
+    - role: ./roles/basic_setup
+
+    - role: ./roles/basic_facts
+
+    - role: ./roles/nuproj_kafka
+
+    - role: ./roles/kafka

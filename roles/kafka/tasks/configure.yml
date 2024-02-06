@@ -1,0 +1,24 @@
+- set_fact:
+    heap_size: "{{consul_data.HeapSize | default(HEAP_SIZE)}}"
+
+# - get_zookeeper_host_list:
+#     region: 'us-west-2'
+#     consul_data: "{{consul_data}}"
+
+- name: Configure server.properties
+  template:
+    src: server.properties.j2
+    dest: "{{ KAFKA_HOME }}/config/server.properties"
+    mode: 0644
+
+- name: Configure log4j.properties
+  template:
+    src: log4j.properties.j2
+    dest: "{{ KAFKA_HOME }}/config/log4j.properties"
+    mode: 0644
+
+- name: Configure kafka-server-start.sh
+  template:
+    src: kafka-server-start.sh.j2
+    dest: "{{ KAFKA_HOME }}/bin/kafka-server-start.sh"
+    mode: 0755

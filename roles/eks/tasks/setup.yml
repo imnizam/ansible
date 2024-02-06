@@ -1,0 +1,68 @@
+---
+- name: pip upgrade
+  pip:
+    name: pip
+    extra_args: --upgrade
+  become: true
+
+- name: pip upgrade awscli
+  pip:
+    name: awscli
+    extra_args: --upgrade
+  become: true
+
+- name: install boto
+  pip:
+    name: 'awsebcli'
+    extra_args: --ignore-installed
+  become: true
+
+- name: install socat
+  apt:
+    name: ['socat']
+    state: present
+    update_cache: yes
+  become: true
+
+- name: make sure eks script directory exists
+  file:
+    path: "{{nuproj_script_home}}/eks"
+    state: directory
+    mode: 0755
+  become: true
+
+- name: Create path /var/lib/kubelet
+  file: path=/var/lib/kubelet state=directory mode=0777 owner=root group=root recurse=yes
+  become: true
+
+- name: Create path /opt/cni/bin
+  file: path=/opt/cni/bin state=directory mode=0777 owner=root group=root recurse=yes
+  become: true
+
+- name: Create path /etc/cni/net.d
+  file: path=/etc/cni/net.d state=directory mode=0755 owner=root group=root recurse=yes
+  become: true
+
+# Install kubectl and kubelet
+- name: Install kubectl
+  get_url: url=https://storage.googleapis.com/kubernetes-release/release/{{kube_version}}/bin/linux/amd64/kubectl dest=/usr/bin/kubectl mode=0777
+  become: true
+  
+- name: Install kubelet
+  get_url: url=https://storage.googleapis.com/kubernetes-release/release/{{kube_version}}/bin/linux/amd64/kubelet dest=/usr/bin/kubelet mode=0777
+  become: true
+  
+- name: Download cni tar file
+  get_url:
+    url: "https://github.com/containernetworking/plugins/releases/download/{{cni_plugin_version}}/cni-plugins-linux-amd64-{{cni_plugin_version}}.tgz"
+    dest: /tmp/
+    validate_certs: False
+  become: true
+
+- name: Extract cni tar file
+  unarchive:
+    src: "/tmp/cni-plugins-linux-amd64-{{cni_plugin_version}}.tgz"
+    dest: /opt/cni/bin/
+    copy: no
+  become: true
+
